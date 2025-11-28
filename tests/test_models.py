@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -104,6 +104,65 @@ class TestProductModel(unittest.TestCase):
     #
     # ADD YOUR TEST CASES HERE
     #
+
+    def test_product_without_id(self):
+        """It should raise a DataValidationError"""
+        product = Product(
+            name="Hat",
+            description="A fedora",
+            price=59.95,
+            available=True,
+            category="CLOTHS"
+        )
+        self.assertIsNone(product.id)
+        with self.assertRaises(DataValidationError):
+            product.update()
+
+    def test_deserialize_missing_name(self):
+        """It should return DataValidationError for missing required data"""
+        data = {
+            "description": "A red fedora",
+            "price": "59.95",
+            "available": True,
+            "category": "CLOTHS",
+        }
+
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+            
+    def test_deserialize_bad_available_type(self):
+        """It should return DataValidationError for bad available type"""
+        data = {
+            "name": "Hat",
+            "description": "A red fedora",
+            "price": "59.95",
+            "available": "yeah",
+            "category": "CLOTHS",
+        }
+
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+
+    def test_deserialize_success(self):
+        """It should deserialize a valid product"""
+        data = {
+            "name":"Hat",
+            "description": "A red fedora",
+            "price": "59.95",
+            "available": True,
+            "category": "CLOTHS",
+        }
+
+        product = Product()
+        product.deserialize(data)
+
+        self.assertEqual(product.name, "Hat")
+        self.assertEqual(product.description, "A red fedora")
+        self.assertEqual(product.price, Decimal("59.95"))
+        self.assertTrue(product.available)
+        self.assertEqual(product.category.name, "CLOTHS")
 
     def test_read_product(self):
         """Test reading of product"""
